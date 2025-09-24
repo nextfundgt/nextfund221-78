@@ -1,13 +1,53 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Wallet, Activity } from 'lucide-react';
-import { useRealtimeBalance } from '@/hooks/useRealtime';
+import { useAuth } from '@/hooks/useAuth';
 import { useUserPreferences } from '@/hooks/useUserPreferences';
 import { formatUSD, brlToUsd } from '@/lib/utils';
+import { useEffect, useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 export const RealtimeBalance = () => {
-  const balance = useRealtimeBalance();
+  const { user, profile } = useAuth();
   const { preferences } = useUserPreferences();
+  const [balance, setBalance] = useState<number>(0);
+  const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
+
+  useEffect(() => {
+    if (profile?.balance !== undefined) {
+      setBalance(profile.balance);
+    }
+  }, [profile?.balance]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    console.log('Setting up realtime balance subscription for user:', user.id);
+
+    // Set up realtime subscription for profile balance changes
+    const channel = supabase
+      .channel('balance-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'profiles',
+          filter: `user_id=eq.${user.id}`
+        },
+        (payload) => {
+          console.log('Balance update received:', payload);
+          const newProfile = payload.new as any;
+          setBalance(newProfile.balance);
+          setLastUpdate(new Date());
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
 
   return (
     <Card className="glass-card-mobile border-primary/20">
@@ -26,7 +66,9 @@ export const RealtimeBalance = () => {
           <div className="text-lg font-bold text-primary">
             {preferences?.show_balance ? formatUSD(brlToUsd(balance)) : "***"}
           </div>
-          <p className="text-xs text-muted-foreground">Atualização em tempo real</p>
+          <p className="text-xs text-muted-foreground">
+            Atualizado: {lastUpdate.toLocaleTimeString('pt-BR')}
+          </p>
         </div>
       </CardContent>
     </Card>

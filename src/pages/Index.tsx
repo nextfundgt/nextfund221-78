@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { TrendingUp, TrendingDown, ArrowUpDown, Settings, RotateCcw, Shield, ShieldCheck, Key, Lock, Mic, ChevronDown, ChevronRight, BarChart3, Menu, Twitter, MessageCircle, Users, DollarSign, Calendar } from "lucide-react";
 import SimulatorCard from "../components/SimulatorCard";
 import nextfundLogo from "../assets/nextfund-logo-new.png";
+import { RealTimeStats } from "@/components/RealTimeStats";
 export default function Index() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -135,15 +136,21 @@ export default function Index() {
               {/* Stats Grid */}
               <div className="grid grid-cols-3 gap-8">
                 <div className="text-center lg:text-left">
-                  <div className="text-3xl font-bold text-white mb-1">R$50K+</div>
+                  <div className="text-3xl font-bold text-white mb-1">
+                    <RealTimeStats type="paid_today" />
+                  </div>
                   <div className="text-sm text-white/60">Pagos Hoje</div>
                 </div>
                 <div className="text-center lg:text-left">
-                  <div className="text-3xl font-bold text-white mb-1">25K+</div>
+                  <div className="text-3xl font-bold text-white mb-1">
+                    <RealTimeStats type="active_users" />
+                  </div>
                   <div className="text-sm text-white/60">Usuários Ativos</div>
                 </div>
                 <div className="text-center lg:text-left">
-                  <div className="text-3xl font-bold text-white mb-1">5M+</div>
+                  <div className="text-3xl font-bold text-white mb-1">
+                    <RealTimeStats type="videos_watched" />
+                  </div>
                   <div className="text-sm text-white/60">Vídeos Assistidos</div>
                 </div>
               </div>

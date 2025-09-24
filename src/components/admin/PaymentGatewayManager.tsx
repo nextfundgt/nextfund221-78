@@ -66,16 +66,37 @@ export function PaymentGatewayManager() {
 
   useEffect(() => {
     fetchGateways();
+    
+    // Setup realtime subscription
+    const channel = supabase
+      .channel('payment-gateways-admin-realtime')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'payment_gateways' }, 
+        (payload) => {
+          console.log('Payment gateway realtime update:', payload);
+          fetchGateways();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const fetchGateways = async () => {
     try {
+      console.log('Fetching real payment gateways from Supabase...');
+      
       const { data, error } = await supabase
         .from('payment_gateways')
         .select('*')
         .order('priority', { ascending: false });
 
       if (error) throw error;
+      
+      console.log('Fetched payment gateways:', data?.length || 0, 'records');
+      
       setGateways((data || []).map(gateway => ({
         ...gateway,
         required_fields: Array.isArray(gateway.required_fields) 

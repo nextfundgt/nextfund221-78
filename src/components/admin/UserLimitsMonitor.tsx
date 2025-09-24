@@ -69,6 +69,8 @@ export function UserLimitsMonitor() {
 
   const fetchUserLimits = async () => {
     try {
+      console.log('Fetching real user limits from Supabase...');
+      
       const { data: userLimits, error } = await supabase
         .from('user_levels')
         .select(`
@@ -87,6 +89,8 @@ export function UserLimitsMonitor() {
         .order('daily_tasks_completed', { ascending: false });
 
       if (error) throw error;
+      
+      console.log('Fetched user limits:', userLimits?.length || 0, 'records');
 
       const formattedData: UserLimitData[] = (userLimits || []).map((item: any) => ({
         id: item.id,
@@ -107,6 +111,14 @@ export function UserLimitsMonitor() {
       const vipUsers = formattedData.filter(u => u.current_vip_level > 0);
       const limitReachedFree = freeUsers.filter(u => u.daily_tasks_completed >= u.daily_limit);
       const activeToday = formattedData.filter(u => u.daily_tasks_completed > 0);
+      
+      console.log('User limits stats:', {
+        totalUsers: formattedData.length,
+        freeUsers: freeUsers.length,
+        limitReachedFree: limitReachedFree.length,
+        vipUsers: vipUsers.length,
+        activeToday: activeToday.length
+      });
 
       setStats({
         totalUsers: formattedData.length,

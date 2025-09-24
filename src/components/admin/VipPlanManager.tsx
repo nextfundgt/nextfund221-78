@@ -60,16 +60,36 @@ export function VipPlanManager() {
 
   useEffect(() => {
     fetchPlans();
+    
+    // Setup realtime subscription
+    const channel = supabase
+      .channel('vip-plans-admin-realtime')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'vip_plans' }, 
+        (payload) => {
+          console.log('VIP plan realtime update:', payload);
+          fetchPlans();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const fetchPlans = async () => {
     try {
+      console.log('Fetching real VIP plans from Supabase...');
+      
       const { data, error } = await supabase
         .from('vip_plans')
         .select('*')
         .order('level');
 
       if (error) throw error;
+      
+      console.log('Fetched VIP plans:', data?.length || 0, 'records');
 
       const formattedPlans = data?.map(plan => ({
         ...plan,

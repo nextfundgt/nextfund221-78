@@ -37,14 +37,18 @@ export function useVideoTasks() {
 
   const fetchTasks = async () => {
     try {
-      // Using any to bypass TypeScript errors until migration is approved
-      const { data, error } = await (supabase as any)
+      console.log('Fetching real video tasks from Supabase...');
+      
+      const { data, error } = await supabase
         .from('video_tasks')
         .select('*')
         .eq('status', 'active')
+        .eq('created_by_admin', true) // Only admin-created videos
         .order('created_at', { ascending: false });
 
       if (error) throw error;
+      
+      console.log('Fetched video tasks:', data?.length || 0, 'records');
       setTasks((data as VideoTask[]) || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao carregar tarefas');
@@ -56,8 +60,7 @@ export function useVideoTasks() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Using any to bypass TypeScript errors until migration is approved
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from('user_video_completions')
         .select('*')
         .eq('user_id', user.id);
@@ -81,21 +84,20 @@ export function useVideoTasks() {
       }
 
       // Increment view count
-      const { data: currentTask } = await (supabase as any)
+      const { data: currentTask } = await supabase
         .from('video_tasks')
         .select('view_count')
         .eq('id', taskId)
         .single();
       
       if (currentTask) {
-        await (supabase as any)
+        await supabase
           .from('video_tasks')
           .update({ view_count: (currentTask.view_count || 0) + 1 })
           .eq('id', taskId);
       }
 
-      // Using any to bypass TypeScript errors until migration is approved
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from('user_video_completions')
         .insert([
           {
@@ -123,8 +125,7 @@ export function useVideoTasks() {
 
   const updateProgress = async (completionId: string, watchTimeSeconds: number) => {
     try {
-      // Using any to bypass TypeScript errors until migration is approved
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from('user_video_completions')
         .update({ 
           watch_time_seconds: watchTimeSeconds,
@@ -150,8 +151,7 @@ export function useVideoTasks() {
       const task = tasks.find(t => t.id === taskId);
       if (!task) throw new Error('Tarefa não encontrada');
 
-      // Using any to bypass TypeScript errors until migration is approved
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from('user_video_completions')
         .update({ 
           status: 'completed',

@@ -72,6 +72,8 @@ export function VideoSessionsMonitor() {
 
   const fetchSessions = async () => {
     try {
+      console.log('Fetching real video sessions from Supabase...');
+      
       const { data, error } = await supabase
         .from('video_watch_sessions')
         .select(`
@@ -83,6 +85,8 @@ export function VideoSessionsMonitor() {
         .limit(100);
 
       if (error) throw error;
+      
+      console.log('Fetched video sessions:', data?.length || 0, 'records');
 
       const processedSessions = data.map((session: any) => ({
         ...session,
@@ -93,11 +97,22 @@ export function VideoSessionsMonitor() {
       setSessions(processedSessions);
 
       // Calculate stats
+      const completedSessions = processedSessions.filter(s => s.is_completed);
+      const fraudulentSessions = processedSessions.filter(s => s.is_fraudulent);
+      const activeSessions = processedSessions.filter(s => !s.is_completed && !s.ended_at);
+      
+      console.log('Video sessions stats:', {
+        total: processedSessions.length,
+        completed: completedSessions.length,
+        fraudulent: fraudulentSessions.length,
+        active: activeSessions.length
+      });
+      
       setStats({
         total: processedSessions.length,
-        completed: processedSessions.filter(s => s.is_completed).length,
-        fraudulent: processedSessions.filter(s => s.is_fraudulent).length,
-        active: processedSessions.filter(s => !s.is_completed && !s.ended_at).length
+        completed: completedSessions.length,
+        fraudulent: fraudulentSessions.length,
+        active: activeSessions.length
       });
 
     } catch (error) {

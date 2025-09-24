@@ -158,7 +158,8 @@ export function UserDetailsModal({ userId, open, onOpenChange }: UserDetailsModa
         .from('user_video_answers')
         .select(`
           *,
-          video_questions(question_text)
+          video_questions(question_text),
+          video_task_id
         `)
         .eq('user_id', userId)
         .order('answered_at', { ascending: false });
@@ -173,11 +174,11 @@ export function UserDetailsModal({ userId, open, onOpenChange }: UserDetailsModa
       const videoTasksMap = Object.fromEntries(videoTasks?.map(v => [v.id, v.title]) || []);
 
       const formattedAnswers = answers?.map(a => ({
-        question_text: a.video_questions?.question_text || 'Pergunta não encontrada',
+        question_text: a.video_questions?.question_text || 'Pergunta removida',
         selected_option: a.selected_option,
         is_correct: a.is_correct,
         answered_at: a.answered_at,
-        video_title: videoTasksMap[a.video_task_id] || 'Vídeo não encontrado'
+        video_title: videoTasksMap[a.video_task_id] || 'Vídeo removido'
       })) || [];
 
       setUserAnswers(formattedAnswers);

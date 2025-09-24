@@ -7,12 +7,11 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { NotificationsPanel } from "@/components/NotificationsPanel";
+import { useRealtimeNotifications } from "@/hooks/useRealtime";
 
-interface NotificationBellProps {
-  unreadCount?: number;
-}
-
-export function NotificationBell({ unreadCount = 3 }: NotificationBellProps) {
+export function NotificationBell() {
+  const { unreadCount } = useRealtimeNotifications();
+  
   return (
     <Popover>
       <PopoverTrigger asChild>

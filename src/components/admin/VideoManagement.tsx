@@ -14,6 +14,7 @@ export function VideoManagement() {
   const { tasks, loading, refetch } = useVideoTasks();
   const [uploadingVideo, setUploadingVideo] = useState(false);
   const [uploadingThumbnail, setUploadingThumbnail] = useState(false);
+  const [realTimeTasks, setRealTimeTasks] = useState<any[]>([]);
   const videoFileRef = useRef<HTMLInputElement>(null);
   const thumbnailFileRef = useRef<HTMLInputElement>(null);
   
@@ -26,6 +27,24 @@ export function VideoManagement() {
     is_premium: false,
     duration_seconds: '30'
   });
+
+  // Setup realtime subscription for video tasks
+  useEffect(() => {
+    const channel = supabase
+      .channel('admin-video-tasks-realtime')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'video_tasks' }, 
+        (payload) => {
+          console.log('Video task realtime update:', payload);
+          refetch(); // Refresh tasks list
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [refetch]);
 
   const handleVideoUpload = async (file: File) => {
     try {

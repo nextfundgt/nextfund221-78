@@ -1,10 +1,85 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { History, ArrowUp, ArrowDown, Activity } from 'lucide-react';
-import { useRealtimeWalletHistory } from '@/hooks/useRealtime';
+import { useAuth } from '@/hooks/useAuth';
 import { formatUSD, brlToUsd } from '@/lib/utils';
+import { useEffect, useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+
 export const WalletHistoryPanel = () => {
-  const walletHistory = useRealtimeWalletHistory();
+  const { user } = useAuth();
+  const [walletHistory, setWalletHistory] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!user) return;
+
+    console.log('Setting up realtime wallet history for user:', user.id);
+
+    // Fetch initial wallet history
+    const fetchWalletHistory = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('wallet_history')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(50);
+        
+        if (error) throw error;
+        
+        console.log('Fetched wallet history:', data?.length || 0, 'records');
+        setWalletHistory(data || []);
+      } catch (error) {
+        console.error('Error fetching wallet history:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchWalletHistory();
+
+    // Set up realtime subscription
+    const channel = supabase
+      .channel('wallet-history-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'wallet_history',
+          filter: `user_id=eq.${user.id}`
+        },
+        (payload) => {
+          console.log('Wallet history realtime update:', payload);
+          setWalletHistory(prev => [payload.new as any, ...prev.slice(0, 49)]);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
+  
+  if (loading) {
+    return (
+      <Card className="glass-card">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <History className="h-5 w-5" />
+            Histórico da Carteira
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-center py-4">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+  
   const formatCurrency = (value: number) => {
     return value.toLocaleString('pt-BR', {
       style: 'currency',
@@ -21,11 +96,27 @@ export const WalletHistoryPanel = () => {
     });
   };
   if (walletHistory.length === 0) {
-    return <Card className="glass-card">
-        
-        
-      </Card>;
+    return (
+      <Card className="glass-card">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <History className="h-5 w-5" />
+            Histórico da Carteira
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-6">
+            <History className="h-12 w-12 text-muted-foreground mx-auto mb-2 opacity-50" />
+            <p className="text-muted-foreground">Nenhuma transação ainda</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              Suas transações aparecerão aqui
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    );
   }
+  
   return <Card className="glass-card">
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-lg">

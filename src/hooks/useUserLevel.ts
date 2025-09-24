@@ -40,8 +40,7 @@ export function useUserLevel() {
 
       console.log('Fetching user level for user:', user.id);
 
-      // Using any to bypass TypeScript errors until migration is approved
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from('user_levels')
         .select('*')
         .eq('user_id', user.id)
@@ -71,8 +70,7 @@ export function useUserLevel() {
 
   const createUserLevel = async (userId: string) => {
     try {
-      // Using any to bypass TypeScript errors until migration is approved
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from('user_levels')
         .insert([
           {
@@ -109,8 +107,7 @@ export function useUserLevel() {
       const levelConfig = LEVEL_CONFIG[Math.min(newLevel, LEVEL_CONFIG.length - 1)];
       const levelProgress = (newTotalTasks % 10) * 10; // Progress in percentage
 
-      // Using any to bypass TypeScript errors until migration is approved
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from('user_levels')
         .update({
           daily_tasks_completed: newDailyTasks,
@@ -142,8 +139,7 @@ export function useUserLevel() {
     if (!userLevel) return;
 
     try {
-      // Using any to bypass TypeScript errors until migration is approved
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from('user_levels')
         .update({ daily_tasks_completed: 0 })
         .eq('id', userLevel.id)

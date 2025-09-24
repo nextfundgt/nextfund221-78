@@ -545,6 +545,8 @@ export default function Admin() {
   };
 
   const updateStats = () => {
+    console.log('Updating admin stats with real data...');
+    
     setStats({
       totalUsers: users.length,
       pendingTransactions: transactions.filter(t => t.status === 'pending').length,
@@ -553,7 +555,18 @@ export default function Admin() {
         .reduce((sum, t) => sum + t.amount, 0),
       unreadNotifications: notifications.filter(n => !n.is_read).length,
       openTickets: tickets.filter(t => t.status === 'open').length,
-      totalAffiliates: affiliates.length
+      totalAffiliates: affiliates.length,
+      totalVideoTasks: 0, // Will be updated by fetchVideoTasksCount
+      activeVipPlans: 0 // Will be updated by fetchVipPlansCount
+    });
+    
+    // Update video tasks and VIP plans counts
+    fetchVideoTasksCount().then(count => {
+      setStats(prev => ({ ...prev, totalVideoTasks: count }));
+    });
+    
+    fetchVipPlansCount().then(count => {
+      setStats(prev => ({ ...prev, activeVipPlans: count }));
     });
   };
 

@@ -88,6 +88,7 @@ export function AdminDashboard() {
   const fetchDashboardStats = async () => {
     try {
       setLoading(true);
+      console.log('Fetching real dashboard stats from Supabase...');
 
       // Vídeos assistidos hoje
       const today = new Date().toISOString().split('T')[0];
@@ -110,7 +111,8 @@ export function AdminDashboard() {
       // Total de usuários
       const { data: users } = await supabase
         .from('profiles')
-        .select('id, current_vip_level');
+        .select('id, current_vip_level')
+        .order('created_at', { ascending: false });
 
       // Total de vídeos ativos
       const { count: videoTasksCount } = await supabase
@@ -124,27 +126,18 @@ export function AdminDashboard() {
         .select('*', { count: 'exact', head: true })
         .eq('status', 'active')
         .gte('expires_at', new Date().toISOString());
-      // Usuários por plano
-      const planCounts = {
-        'Free': 0,
-        'VIP 1': 0,
-        'VIP 2': 0,
-        'VIP 3+': 0
-      };
+      // Usuários por plano - dados reais
+      const freeUsers = users?.filter(u => (u.current_vip_level || 0) === 0).length || 0;
+      const vip1Users = users?.filter(u => (u.current_vip_level || 0) === 1).length || 0;
+      const vip2Users = users?.filter(u => (u.current_vip_level || 0) === 2).length || 0;
+      const vip3PlusUsers = users?.filter(u => (u.current_vip_level || 0) >= 3).length || 0;
 
-      users?.forEach(user => {
-        const level = user.current_vip_level || 0;
-        if (level === 0) planCounts['Free']++;
-        else if (level === 1) planCounts['VIP 1']++;
-        else if (level === 2) planCounts['VIP 2']++;
-        else planCounts['VIP 3+']++;
-      });
-
-      const usersByPlan = Object.entries(planCounts).map(([plan, count], index) => ({
-        plan,
-        count,
-        color: COLORS[index]
-      }));
+      const usersByPlan = [
+        { plan: 'Free', count: freeUsers, color: COLORS[0] },
+        { plan: 'VIP 1', count: vip1Users, color: COLORS[1] },
+        { plan: 'VIP 2', count: vip2Users, color: COLORS[2] },
+        { plan: 'VIP 3+', count: vip3PlusUsers, color: COLORS[3] }
+      ];
 
       // Top vídeos mais assistidos
       const { data: topVideosData } = await supabase
@@ -185,6 +178,15 @@ export function AdminDashboard() {
       // Taxa de conversão (usuários VIP / total)
       const vipUsers = users?.filter(u => (u.current_vip_level || 0) > 0).length || 0;
       const conversionRate = users?.length ? (vipUsers / users.length) * 100 : 0;
+      
+      console.log('Dashboard stats calculated:', {
+        videosWatchedToday: todayViews?.length || 0,
+        totalPaidBalance: totalPaid,
+        totalUsers: users?.length || 0,
+        totalVideoTasks: videoTasksCount || 0,
+        activeVipSubscriptions: activeVipCount || 0,
+        conversionRate
+      });
 
       setStats({
         videosWatchedToday: todayViews?.length || 0,

@@ -76,45 +76,7 @@ export const useRealtimeNotifications = () => {
 };
 
 // Hook for realtime balance updates
-export const useRealtimeBalance = () => {
-  const { user, profile } = useAuth();
-  const [balance, setBalance] = useState<number>(0);
-
-  useEffect(() => {
-    if (profile?.balance) {
-      setBalance(profile.balance);
-    }
-  }, [profile?.balance]);
-
-  useEffect(() => {
-    if (!user) return;
-
-    // Set up realtime subscription for profile balance changes
-    const channel = supabase
-      .channel('balance-realtime')
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'profiles',
-          filter: `user_id=eq.${user.id}`
-        },
-        (payload) => {
-          console.log('Balance update:', payload);
-          const newProfile = payload.new as any;
-          setBalance(newProfile.balance);
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [user]);
-
-  return balance;
-};
+// Moved to RealtimeBalance component for better encapsulation
 
 // Hook for realtime transactions
 export const useRealtimeTransactions = () => {

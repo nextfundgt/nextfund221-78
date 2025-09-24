@@ -7,7 +7,7 @@ import { TrendingUp, DollarSign, Target, PlayCircle, ArrowDownLeft, User, HelpCi
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useRealtimeUserLevel } from "@/hooks/useRealtimeUserLevel";
-import { useRealtimeBalance } from "@/hooks/useRealtime";
+import { useRealtimeTransactions } from "@/hooks/useRealtime";
 import { MarketingBanner } from "@/components/MarketingBanner";
 import { VideosRestantesCard } from "@/components/VideosRestantesCard";
 import { DashboardLayout } from "@/components/DashboardLayout";
@@ -29,7 +29,8 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const { user, profile } = useAuth();
   const { userLevel } = useRealtimeUserLevel();
-  const balance = useRealtimeBalance();
+  const transactions = useRealtimeTransactions();
+  
   useEffect(() => {
     if (user) {
       fetchTaskStats();
@@ -37,16 +38,19 @@ export default function Dashboard() {
   }, [user]);
 
   useEffect(() => {
-    if (balance !== null) {
+    if (profile?.balance !== undefined) {
       setStats(prev => ({
         ...prev,
-        balance
+        balance: profile.balance
       }));
     }
-  }, [balance]);
+  }, [profile?.balance]);
+  
   const fetchTaskStats = async () => {
     if (!user) return;
     try {
+      console.log('Fetching real task stats for user:', user.id);
+      
       // Get video completions for today and this month
       const today = new Date();
       const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
@@ -76,6 +80,12 @@ export default function Dashboard() {
         monthlyTaskEarnings: monthlyEarnings,
         totalEarnings
       }));
+      
+      console.log('Task stats updated:', {
+        dailyEarnings,
+        monthlyEarnings,
+        totalEarnings
+      });
     } catch (error) {
       console.error('Error fetching task stats:', error);
     } finally {

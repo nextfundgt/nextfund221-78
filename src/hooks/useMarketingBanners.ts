@@ -21,14 +21,17 @@ export function useMarketingBanners() {
 
   const fetchBanners = async () => {
     try {
-      // Using any to bypass TypeScript errors until migration is approved
-      const { data, error } = await (supabase as any)
+      console.log('Fetching real marketing banners from Supabase...');
+      
+      const { data, error } = await supabase
         .from('marketing_banners')
         .select('*')
         .eq('is_active', true)
         .order('display_order', { ascending: true });
 
       if (error) throw error;
+      
+      console.log('Fetched marketing banners:', data?.length || 0, 'records');
       setBanners((data as MarketingBanner[]) || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao carregar banners');
@@ -44,25 +47,26 @@ export function useMarketingBanners() {
 
     loadData();
 
-    // Subscribe to real-time updates (temporarily disabled until migration is approved)
-    // const channel = supabase
-    //   .channel('marketing_banners_changes')
-    //   .on(
-    //     'postgres_changes',
-    //     {
-    //       event: '*',
-    //       schema: 'public',
-    //       table: 'marketing_banners'
-    //     },
-    //     () => {
-    //       fetchBanners();
-    //     }
-    //   )
-    //   .subscribe();
+    // Subscribe to real-time updates
+    const channel = supabase
+      .channel('marketing_banners_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'marketing_banners'
+        },
+        (payload) => {
+          console.log('Marketing banner realtime update:', payload);
+          fetchBanners();
+        }
+      )
+      .subscribe();
 
-    // return () => {
-    //   supabase.removeChannel(channel);
-    // };
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   return {
