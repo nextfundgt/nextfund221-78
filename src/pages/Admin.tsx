@@ -535,6 +535,15 @@ export default function Admin() {
         .from('vip_plans')
         .select('*', { count: 'exact', head: true })
         .eq('status', 'active');
+
+      if (error) throw error;
+      return count || 0;
+    } catch (error) {
+      console.error('Error fetching VIP plans count:', error);
+      return 0;
+    }
+  };
+
   const updateStats = () => {
     setStats({
       totalUsers: users.length,
