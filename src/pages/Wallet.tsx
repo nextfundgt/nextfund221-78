@@ -21,9 +21,11 @@ import {
   ChevronDown
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { useVipPlans } from '@/hooks/useVipPlans';
 import { supabase } from '@/integrations/supabase/client';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { TransactionDialog } from '@/components/TransactionDialog';
+import { VipUpgradeDialog } from '@/components/VipUpgradeDialog';
 import { WalletPixDeposit } from '@/components/WalletPixDeposit';
 import { formatUSD, brlToUsd } from '@/lib/utils';
 
@@ -50,8 +52,10 @@ export default function Wallet() {
   const [lastFetch, setLastFetch] = useState<number>(0);
   const [showPixDeposit, setShowPixDeposit] = useState(false);
   const [showAllTransactions, setShowAllTransactions] = useState(false);
+  const [showVipUpgrade, setShowVipUpgrade] = useState(false);
   
   const { user, profile } = useAuth();
+  const { subscribeToPlan } = useVipPlans();
 
   // Cache duration: 30 seconds
   const CACHE_DURATION = 30 * 1000;
@@ -268,6 +272,7 @@ export default function Wallet() {
                 Sacar
               </Button>
             }
+            onVipUpgradeRequired={() => setShowVipUpgrade(true)}
           />
         </div>
 
@@ -473,6 +478,20 @@ export default function Wallet() {
             // Refresh data to show new transaction
             if (profile?.user_id) {
               fetchData(profile.user_id);
+            }
+          }}
+        />
+
+        {/* VIP Upgrade Modal */}
+        <VipUpgradeDialog
+          open={showVipUpgrade}
+          onOpenChange={setShowVipUpgrade}
+          onSubscribe={async (planId) => {
+            try {
+              await subscribeToPlan(planId);
+              setShowVipUpgrade(false);
+            } catch (error) {
+              console.error('Error subscribing to plan:', error);
             }
           }}
         />

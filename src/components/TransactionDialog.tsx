@@ -6,9 +6,10 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/hooks/useAuth';
+import { useRealtimeVipStatus } from '@/hooks/useRealtimeVipStatus';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { DollarSign, CreditCard } from 'lucide-react';
+import { DollarSign, CreditCard, Crown } from 'lucide-react';
 import { formatCPF, isValidCPF } from '@/lib/cpfValidator';
 import { formatUSD, usdToBrl, brlToUsd } from '@/lib/utils';
 
@@ -17,9 +18,10 @@ interface TransactionDialogProps {
   trigger?: React.ReactNode;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  onVipUpgradeRequired?: () => void;
 }
 
-export function TransactionDialog({ type, trigger, open: controlledOpen, onOpenChange }: TransactionDialogProps) {
+export function TransactionDialog({ type, trigger, open: controlledOpen, onOpenChange, onVipUpgradeRequired }: TransactionDialogProps) {
   const [internalOpen, setInternalOpen] = useState(false);
   const open = controlledOpen !== undefined ? controlledOpen : internalOpen;
   const setOpen = onOpenChange || setInternalOpen;
@@ -33,6 +35,7 @@ export function TransactionDialog({ type, trigger, open: controlledOpen, onOpenC
   });
   const [loading, setLoading] = useState(false);
   const { user, profile } = useAuth();
+  const { hasVipAccess } = useRealtimeVipStatus();
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -100,12 +103,28 @@ export function TransactionDialog({ type, trigger, open: controlledOpen, onOpenC
       return;
     }
 
-    if (type === 'withdraw' && usdAmount < 10) {
+    if (type === 'withdraw' && usdAmount < 15) {
       toast({
         title: 'Erro',
-        description: 'O valor mínimo para saque é $10.00.',
+        description: 'O valor mínimo para saque é $15.00.',
         variant: 'destructive',
       });
+      return;
+    }
+
+    // Check VIP requirement for withdrawals
+    if (type === 'withdraw' && !hasVipAccess(1)) {
+      toast({
+        title: 'VIP Necessário',
+        description: 'Para realizar saques, você precisa ser VIP nível 1 ou superior.',
+        variant: 'destructive',
+      });
+      
+      if (onVipUpgradeRequired) {
+        onVipUpgradeRequired();
+      }
+      
+      setOpen(false);
       return;
     }
 
@@ -245,7 +264,7 @@ export function TransactionDialog({ type, trigger, open: controlledOpen, onOpenC
               className="form-input-mobile"
             />
             <p className="text-xs text-muted-foreground">
-              {type === 'deposit' ? 'Mín: $5.00 | Máx: $25.00' : 'Valor mínimo: $10.00'}
+              {type === 'deposit' ? 'Mín: $5.00 | Máx: $25.00' : 'Valor mínimo: $15.00 (VIP necessário)'}
             </p>
           </div>
 
@@ -279,10 +298,18 @@ export function TransactionDialog({ type, trigger, open: controlledOpen, onOpenC
           </div>
 
           {type === 'withdraw' && profile && (
-            <div className="p-3 bg-muted/20 rounded-lg">
+            <div className="p-3 bg-muted/20 rounded-lg space-y-2">
               <p className="text-sm text-muted-foreground">
                 Saldo disponível: <span className="font-medium text-primary">{formatUSD(brlToUsd(profile.balance))}</span>
               </p>
+              {!hasVipAccess(1) && (
+                <div className="flex items-center gap-2 p-2 bg-gradient-to-r from-amber-500/10 to-orange-500/10 rounded-md border border-amber-500/20">
+                  <Crown className="h-4 w-4 text-amber-500" />
+                  <p className="text-xs text-amber-600 dark:text-amber-400 font-medium">
+                    VIP necessário para saques
+                  </p>
+                </div>
+              )}
             </div>
           )}
 
