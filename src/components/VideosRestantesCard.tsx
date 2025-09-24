@@ -107,9 +107,6 @@ export function VideosRestantesCard() {
             </div>
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <Badge className={urgente ? 'bg-warning/20 text-warning border-warning/30' : 'bg-success/20 text-success border-success/30'}>
-                  {videosRestantes} {videosRestantes === 1 ? 'Vídeo Restante' : 'Vídeos Restantes'}
-                </Badge>
                 {urgente && (
                   <span className="text-xs text-warning font-medium">⏰ Última Chance!</span>
                 )}
