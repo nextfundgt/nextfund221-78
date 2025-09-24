@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover" />
+    <title>Plataforma de Investimentos</title>
+    <meta name="description" content="Sua plataforma completa para gerenciar e otimizar seus investimentos com segurança e eficiência." />
+    <meta name="author" content="Investment Platform Inc." />
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json">
+
+    <!-- Mobile theme colors - Chrome Android dark mode workaround -->
+    <meta name="theme-color" content="#0f172a">
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0f172a">
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#0f172a">
+    <meta name="msapplication-navbutton-color" content="#0f172a">
+    
+    <!-- iOS specific -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="NextFund">
+    
+    <!-- Android specific -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="application-name" content="NextFund">
+
+    <meta property="og:title" content="Plataforma de Investimentos" />
+    <meta property="og:description" content="Gerencie seus investimentos. Plataforma moderna, segura e eficiente para todos os tipos de investidores." />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@lovable_dev" />
+    <meta name="twitter:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
+  </head>
+
+  <body>
+    <div id="root"></div>
+    <script>
+      // Force theme color update for Chrome Android
+      function updateThemeColor() {
+        const themeColorMeta = document.querySelector('meta[name="theme-color"]');
+        if (themeColorMeta) {
+          themeColorMeta.content = '#0f172a';
+        }
+        
+        // Add additional meta tags if they don't exist
+        if (!document.querySelector('meta[name="msapplication-navbutton-color"]')) {
+          const meta = document.createElement('meta');
+          meta.name = 'msapplication-navbutton-color';
+          meta.content = '#0f172a';
+          document.head.appendChild(meta);
+        }
+      }
+      
+      // Update on load and visibility change
+      document.addEventListener('DOMContentLoaded', updateThemeColor);
+      document.addEventListener('visibilitychange', updateThemeColor);
+      window.addEventListener('focus', updateThemeColor);
+    </script>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
