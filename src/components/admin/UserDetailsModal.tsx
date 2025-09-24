@@ -63,9 +63,56 @@ export function UserDetailsModal({ userId, open, onOpenChange }: UserDetailsModa
   useEffect(() => {
     if (userId && open) {
       fetchUserDetails();
+      setupRealtimeSubscriptions();
     }
+
+    return () => {
+      // Cleanup subscriptions when modal closes
+      if (!open) {
+        supabase.removeAllChannels();
+      }
+    };
   }, [userId, open]);
 
+  const setupRealtimeSubscriptions = () => {
+    if (!userId) return;
+
+    // Subscribe to user profile changes
+    const profileChannel = supabase
+      .channel(`user-profile-${userId}`)
+      .on('postgres_changes', 
+        { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `user_id=eq.${userId}` }, 
+        (payload) => {
+          console.log('User profile updated:', payload);
+          setUserDetails(payload.new as UserDetails);
+        }
+      )
+      .subscribe();
+
+    // Subscribe to video completions
+    const completionsChannel = supabase
+      .channel(`user-completions-${userId}`)
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'user_video_completions', filter: `user_id=eq.${userId}` }, 
+        () => {
+          console.log('User video completions updated');
+          fetchUserDetails(); // Refresh all data
+        }
+      )
+      .subscribe();
+
+    // Subscribe to wallet history
+    const walletChannel = supabase
+      .channel(`user-wallet-${userId}`)
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'wallet_history', filter: `user_id=eq.${userId}` }, 
+        () => {
+          console.log('User wallet history updated');
+          fetchUserDetails(); // Refresh all data
+        }
+      )
+      .subscribe();
+  };
   const fetchUserDetails = async () => {
     if (!userId) return;
     
@@ -174,7 +221,8 @@ export function UserDetailsModal({ userId, open, onOpenChange }: UserDetailsModa
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-5xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-3">
+          <DialogTitle className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
             <Avatar className="h-10 w-10">
               <AvatarImage src={userDetails.avatar_url} />
               <AvatarFallback>
@@ -184,6 +232,11 @@ export function UserDetailsModal({ userId, open, onOpenChange }: UserDetailsModa
             {userDetails.full_name}
             <Badge variant={userDetails.current_vip_level > 0 ? "default" : "secondary"}>
               {vipPlanName}
+            </Badge>
+            </div>
+            <Badge variant="outline" className="text-xs">
+              <Activity className="h-3 w-3 mr-1" />
+              Tempo Real
             </Badge>
           </DialogTitle>
         </DialogHeader>
@@ -242,7 +295,12 @@ export function UserDetailsModal({ userId, open, onOpenChange }: UserDetailsModa
           <TabsContent value="videos" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle>Histórico de Vídeos Assistidos</CardTitle>
+                <CardTitle className="flex items-center justify-between">
+                  <span>Histórico de Vídeos Assistidos</span>
+                  <Badge variant="outline" className="text-xs">
+                    {videoCompletions.length} total
+                  </Badge>
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3 max-h-96 overflow-y-auto">
@@ -279,7 +337,14 @@ export function UserDetailsModal({ userId, open, onOpenChange }: UserDetailsModa
           <TabsContent value="answers" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle>Histórico de Respostas</CardTitle>
+                <CardTitle className="flex items-center justify-between">
+                  <span>Histórico de Respostas</span>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="text-xs">
+                      {correctAnswers}/{totalAnswers} corretas
+                    </Badge>
+                  </div>
+                </CardTitle>
                 <div className="flex items-center gap-2">
                   <Progress value={accuracyRate} className="flex-1" />
                   <span className="text-sm font-medium">{accuracyRate.toFixed(1)}%</span>
@@ -318,7 +383,13 @@ export function UserDetailsModal({ userId, open, onOpenChange }: UserDetailsModa
           <TabsContent value="wallet" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle>Histórico da Carteira</CardTitle>
+                <CardTitle className="flex items-center justify-between">
+                  <span>Histórico da Carteira</span>
+                  <Badge variant="outline" className="text-xs">
+                    <Activity className="h-3 w-3 mr-1" />
+                    Tempo Real
+                  </Badge>
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3 max-h-96 overflow-y-auto">
@@ -372,9 +443,21 @@ export function UserDetailsModal({ userId, open, onOpenChange }: UserDetailsModa
                     <div className="text-lg">{vipPlanName}</div>
                   </div>
                   <div>
+                    <label className="text-sm font-medium text-muted-foreground">Vídeos Extras</label>
+                    <div className="text-lg">{userDetails.extra_videos_available || 0}</div>
+                  </div>
+                  <div>
                     <label className="text-sm font-medium text-muted-foreground">Membro desde</label>
                     <div className="text-lg">
                       {format(new Date(userDetails.created_at), "dd/MM/yyyy", { locale: ptBR })}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Código de Afiliado</label>
+                    <div className="text-lg">
+                      <code className="bg-muted px-2 py-1 rounded text-sm">
+                        {userDetails.affiliate_code || 'N/A'}
+                      </code>
                     </div>
                   </div>
                 </div>

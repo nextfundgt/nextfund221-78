@@ -1,19 +1,24 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
-import { Users, Video, DollarSign, Crown, TrendingUp, Calendar, Eye, Trophy } from "lucide-react";
+import { Users, Video, DollarSign, Crown, TrendingUp, Calendar, Eye, Trophy, Activity, RefreshCw } from "lucide-react";
 import { StatsCard } from "./StatsCard";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
 
 interface DashboardStats {
   videosWatchedToday: number;
   totalPaidBalance: number;
   totalUsers: number;
+  totalVideoTasks: number;
+  activeVipSubscriptions: number;
   usersByPlan: Array<{ plan: string; count: number; color: string }>;
   topVideos: Array<{ title: string; views: number; reward: number }>;
   dailyViews: Array<{ date: string; views: number }>;
   conversionRate: number;
+  lastUpdated: Date;
 }
 
 const COLORS = ['hsl(var(--primary))', 'hsl(var(--secondary))', 'hsl(var(--accent))', 'hsl(var(--muted))'];
@@ -23,17 +28,63 @@ export function AdminDashboard() {
     videosWatchedToday: 0,
     totalPaidBalance: 0,
     totalUsers: 0,
+    totalVideoTasks: 0,
+    activeVipSubscriptions: 0,
     usersByPlan: [],
     topVideos: [],
     dailyViews: [],
-    conversionRate: 0
+    conversionRate: 0,
+    lastUpdated: new Date()
   });
   const [loading, setLoading] = useState(true);
+  const [realtimeConnected, setRealtimeConnected] = useState(false);
 
   useEffect(() => {
     fetchDashboardStats();
+    setupRealtimeSubscriptions();
+
+    return () => {
+      supabase.removeAllChannels();
+    };
   }, []);
 
+  const setupRealtimeSubscriptions = () => {
+    // Subscribe to key tables for dashboard updates
+    const channel = supabase
+      .channel('admin-dashboard-realtime')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'user_video_completions' }, 
+        () => {
+          console.log('Video completion update - refreshing dashboard');
+          fetchDashboardStats();
+        }
+      )
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'transactions' }, 
+        () => {
+          console.log('Transaction update - refreshing dashboard');
+          fetchDashboardStats();
+        }
+      )
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'profiles' }, 
+        () => {
+          console.log('Profile update - refreshing dashboard');
+          fetchDashboardStats();
+        }
+      )
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'user_vip_subscriptions' }, 
+        () => {
+          console.log('VIP subscription update - refreshing dashboard');
+          fetchDashboardStats();
+        }
+      )
+      .subscribe((status) => {
+        console.log('Dashboard realtime status:', status);
+        setRealtimeConnected(status === 'SUBSCRIBED');
+      });
+  };
   const fetchDashboardStats = async () => {
     try {
       setLoading(true);
@@ -61,6 +112,18 @@ export function AdminDashboard() {
         .from('profiles')
         .select('id, current_vip_level');
 
+      // Total de vídeos ativos
+      const { count: videoTasksCount } = await supabase
+        .from('video_tasks')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'active');
+
+      // Assinaturas VIP ativas
+      const { count: activeVipCount } = await supabase
+        .from('user_vip_subscriptions')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'active')
+        .gte('expires_at', new Date().toISOString());
       // Usuários por plano
       const planCounts = {
         'Free': 0,
@@ -127,10 +190,13 @@ export function AdminDashboard() {
         videosWatchedToday: todayViews?.length || 0,
         totalPaidBalance: totalPaid,
         totalUsers: users?.length || 0,
+        totalVideoTasks: videoTasksCount || 0,
+        activeVipSubscriptions: activeVipCount || 0,
         usersByPlan,
         topVideos,
         dailyViews,
-        conversionRate
+        conversionRate,
+        lastUpdated: new Date()
       });
 
     } catch (error) {
@@ -146,8 +212,27 @@ export function AdminDashboard() {
 
   return (
     <div className="space-y-6">
+      {/* Header with realtime status */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold">Dashboard Administrativo</h2>
+          <p className="text-muted-foreground">
+            Última atualização: {stats.lastUpdated.toLocaleTimeString('pt-BR')}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Badge variant={realtimeConnected ? 'default' : 'outline'}>
+            <Activity className={`h-3 w-3 mr-1 ${realtimeConnected ? 'text-success' : 'text-warning'}`} />
+            {realtimeConnected ? 'Tempo Real' : 'Conectando...'}
+          </Badge>
+          <Button variant="outline" size="sm" onClick={fetchDashboardStats} disabled={loading}>
+            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            Atualizar
+          </Button>
+        </div>
+      </div>
       {/* Cards de Estatísticas */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         <StatsCard
           title="Vídeos Hoje"
           value={stats.videosWatchedToday}
@@ -167,10 +252,16 @@ export function AdminDashboard() {
           color="secondary"
         />
         <StatsCard
-          title="Taxa Conversão"
-          value={`${stats.conversionRate.toFixed(1)}%`}
-          icon={TrendingUp}
-          color="warning"
+          title="Vídeos Ativos"
+          value={stats.totalVideoTasks}
+          icon={Video}
+          color="primary"
+        />
+        <StatsCard
+          title="VIP Ativos"
+          value={stats.activeVipSubscriptions}
+          icon={Crown}
+          color="secondary"
         />
       </div>
 
@@ -285,7 +376,7 @@ export function AdminDashboard() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div className="text-center p-4 glass-card">
                   <div className="text-2xl font-bold text-primary">{stats.usersByPlan.find(p => p.plan === 'Free')?.count || 0}</div>
                   <div className="text-sm text-muted-foreground">Usuários Free</div>
@@ -299,6 +390,10 @@ export function AdminDashboard() {
                 <div className="text-center p-4 glass-card">
                   <div className="text-2xl font-bold text-accent">{stats.conversionRate.toFixed(1)}%</div>
                   <div className="text-sm text-muted-foreground">Taxa de Conversão</div>
+                </div>
+                <div className="text-center p-4 glass-card">
+                  <div className="text-2xl font-bold text-warning">{stats.totalVideoTasks}</div>
+                  <div className="text-sm text-muted-foreground">Vídeos Ativos</div>
                 </div>
               </div>
             </CardContent>

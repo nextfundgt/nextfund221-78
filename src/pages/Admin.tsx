@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { 
   Users, 
   CreditCard, 
@@ -18,7 +19,9 @@ import {
   Video,
   HelpCircle,
   BarChart3,
-  Receipt
+  Receipt,
+  Activity,
+  RefreshCw
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -44,7 +47,12 @@ interface Transaction {
   amount: number;
   status: string;
   method: string;
+  name?: string;
+  email?: string;
+  cpf?: string;
+  notes?: string;
   created_at: string;
+  processed_at?: string;
   notes: string | null;
   processed_at: string | null;
   updated_at: string;
@@ -57,6 +65,8 @@ interface UserProfile {
   full_name: string;
   balance: number;
   affiliate_code: string;
+  current_vip_level?: number;
+  user_number: number;
   created_at: string;
 }
 
@@ -79,6 +89,8 @@ interface SupportTicket {
   status: string;
   priority: string;
   created_at: string;
+  updated_at: string;
+  user_name?: string;
 }
 
 interface Coupon {
@@ -91,6 +103,8 @@ interface Coupon {
   status: string;
   expires_at: string | null;
   created_at: string;
+  updated_at: string;
+  user_name?: string;
 }
 
 interface Affiliate {
@@ -101,6 +115,8 @@ interface Affiliate {
   signups_count: number;
   rewards_total: number;
   created_at: string;
+  updated_at: string;
+  user_name?: string;
 }
 
 export default function Admin() {
@@ -112,13 +128,17 @@ export default function Admin() {
   const [affiliates, setAffiliates] = useState<Affiliate[]>([]);
   
   const [loading, setLoading] = useState(true);
+  const [realtimeConnected, setRealtimeConnected] = useState(false);
+  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [stats, setStats] = useState({
     totalUsers: 0,
     pendingTransactions: 0,
     totalVolume: 0,
     unreadNotifications: 0,
     openTickets: 0,
-    totalAffiliates: 0
+    totalAffiliates: 0,
+    totalVideoTasks: 0,
+    activeVipPlans: 0
   });
 
   // Modal states
@@ -140,57 +160,167 @@ export default function Admin() {
 
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [userDetailsOpen, setUserDetailsOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState('dashboard');
 
   const { signOut, user } = useAuth();
   const { toast } = useToast();
 
   useEffect(() => {
     fetchData();
-    
-    // Subscribe to real-time updates for all tables
-    const channels = [
-      supabase.channel('admin-transactions').on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'transactions' }, 
-        () => { fetchTransactions(); updateStats(); }
-      ),
-      supabase.channel('admin-profiles').on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'profiles' }, 
-        () => { fetchUsers(); updateStats(); }
-      ),
-      supabase.channel('admin-notifications').on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'notifications' }, 
-        () => { fetchNotifications(); updateStats(); }
-      ),
-      supabase.channel('admin-tickets').on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'support_tickets' }, 
-        () => { fetchTickets(); updateStats(); }
-      ),
-      supabase.channel('admin-coupons').on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'coupons' }, 
-        () => { fetchCoupons(); updateStats(); }
-      ),
-      supabase.channel('admin-affiliates').on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'affiliates' }, 
-        () => { fetchAffiliates(); updateStats(); }
-      )
-    ];
-
-    channels.forEach(channel => channel.subscribe());
+    setupRealtimeSubscriptions();
 
     return () => {
-      channels.forEach(channel => supabase.removeChannel(channel));
+      // Cleanup all channels
+      supabase.removeAllChannels();
     };
   }, []);
 
+  const setupRealtimeSubscriptions = () => {
+    console.log('Setting up admin realtime subscriptions...');
+    
+    // Transactions realtime
+    const transactionsChannel = supabase
+      .channel('admin-transactions-realtime')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'transactions' }, 
+        (payload) => {
+          console.log('Transaction update:', payload);
+          setLastUpdate(new Date());
+          fetchTransactions();
+        }
+      )
+      .subscribe((status) => {
+        console.log('Transactions channel status:', status);
+        if (status === 'SUBSCRIBED') setRealtimeConnected(true);
+      });
+
+    // Profiles realtime
+    const profilesChannel = supabase
+      .channel('admin-profiles-realtime')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'profiles' }, 
+        (payload) => {
+          console.log('Profile update:', payload);
+          setLastUpdate(new Date());
+          fetchUsers();
+        }
+      )
+      .subscribe();
+
+    // Notifications realtime
+    const notificationsChannel = supabase
+      .channel('admin-notifications-realtime')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'notifications' }, 
+        (payload) => {
+          console.log('Notification update:', payload);
+          setLastUpdate(new Date());
+          fetchNotifications();
+        }
+      )
+      .subscribe();
+
+    // Support tickets realtime
+    const ticketsChannel = supabase
+      .channel('admin-tickets-realtime')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'support_tickets' }, 
+        (payload) => {
+          console.log('Support ticket update:', payload);
+          setLastUpdate(new Date());
+          fetchTickets();
+        }
+      )
+      .subscribe();
+
+    // Coupons realtime
+    const couponsChannel = supabase
+      .channel('admin-coupons-realtime')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'coupons' }, 
+        (payload) => {
+          console.log('Coupon update:', payload);
+          setLastUpdate(new Date());
+          fetchCoupons();
+        }
+      )
+      .subscribe();
+
+    // Affiliates realtime
+    const affiliatesChannel = supabase
+      .channel('admin-affiliates-realtime')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'affiliates' }, 
+        (payload) => {
+          console.log('Affiliate update:', payload);
+          setLastUpdate(new Date());
+          fetchAffiliates();
+        }
+      )
+      .subscribe();
+
+    // Video tasks realtime
+    const videoTasksChannel = supabase
+      .channel('admin-video-tasks-realtime')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'video_tasks' }, 
+        (payload) => {
+          console.log('Video task update:', payload);
+          setLastUpdate(new Date());
+          updateStats();
+        }
+      )
+      .subscribe();
+
+    // VIP plans realtime
+    const vipPlansChannel = supabase
+      .channel('admin-vip-plans-realtime')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'vip_plans' }, 
+        (payload) => {
+          console.log('VIP plan update:', payload);
+          setLastUpdate(new Date());
+          updateStats();
+        }
+      )
+      .subscribe();
+
+    // User levels realtime
+    const userLevelsChannel = supabase
+      .channel('admin-user-levels-realtime')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'user_levels' }, 
+        (payload) => {
+          console.log('User level update:', payload);
+          setLastUpdate(new Date());
+          updateStats();
+        }
+      )
+      .subscribe();
+
+    // Video completions realtime
+    const videoCompletionsChannel = supabase
+      .channel('admin-video-completions-realtime')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'user_video_completions' }, 
+        (payload) => {
+          console.log('Video completion update:', payload);
+          setLastUpdate(new Date());
+          updateStats();
+        }
+      )
+      .subscribe();
+  };
   const fetchData = async () => {
+    console.log('Fetching admin data...');
     await Promise.all([
       fetchTransactions(),
       fetchUsers(),
       fetchNotifications(),
       fetchTickets(),
       fetchCoupons(),
-      fetchAffiliates()
+      fetchAffiliates(),
+      fetchVideoTasksCount(),
+      fetchVipPlansCount()
     ]);
     updateStats();
     setLoading(false);
@@ -223,8 +353,14 @@ export default function Admin() {
       );
       
       setTransactions(transactionsWithUsers);
+      console.log('Fetched transactions:', transactionsWithUsers.length);
     } catch (error) {
       console.error('Error fetching transactions:', error);
+      toast({
+        title: 'Erro',
+        description: 'Erro ao carregar transações',
+        variant: 'destructive'
+      });
     }
   };
 
@@ -237,8 +373,14 @@ export default function Admin() {
 
       if (error) throw error;
       setUsers(data || []);
+      console.log('Fetched users:', (data || []).length);
     } catch (error) {
       console.error('Error fetching users:', error);
+      toast({
+        title: 'Erro',
+        description: 'Erro ao carregar usuários',
+        variant: 'destructive'
+      });
     }
   };
 
@@ -251,53 +393,148 @@ export default function Admin() {
 
       if (error) throw error;
       setNotifications(data || []);
+      console.log('Fetched notifications:', (data || []).length);
     } catch (error) {
       console.error('Error fetching notifications:', error);
+      toast({
+        title: 'Erro',
+        description: 'Erro ao carregar notificações',
+        variant: 'destructive'
+      });
     }
   };
 
   const fetchTickets = async () => {
     try {
-      const { data, error } = await supabase
+      const { data: ticketsData, error } = await supabase
         .from('support_tickets')
         .select('*')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setTickets(data || []);
+      
+      // Fetch user names for tickets
+      const ticketsWithUsers = await Promise.all(
+        (ticketsData || []).map(async (ticket) => {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('full_name')
+            .eq('user_id', ticket.user_id)
+            .single();
+            
+          return {
+            ...ticket,
+            user_name: profile?.full_name || 'N/A'
+          };
+        })
+      );
+      
+      setTickets(ticketsWithUsers);
+      console.log('Fetched tickets:', ticketsWithUsers.length);
     } catch (error) {
       console.error('Error fetching tickets:', error);
+      toast({
+        title: 'Erro',
+        description: 'Erro ao carregar tickets',
+        variant: 'destructive'
+      });
     }
   };
 
   const fetchCoupons = async () => {
     try {
-      const { data, error } = await supabase
+      const { data: couponsData, error } = await supabase
         .from('coupons')
         .select('*')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setCoupons(data || []);
+      
+      // Fetch user names for coupons
+      const couponsWithUsers = await Promise.all(
+        (couponsData || []).map(async (coupon) => {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('full_name')
+            .eq('user_id', coupon.user_id)
+            .single();
+            
+          return {
+            ...coupon,
+            user_name: profile?.full_name || 'N/A'
+          };
+        })
+      );
+      
+      setCoupons(couponsWithUsers);
+      console.log('Fetched coupons:', couponsWithUsers.length);
     } catch (error) {
       console.error('Error fetching coupons:', error);
+      toast({
+        title: 'Erro',
+        description: 'Erro ao carregar cupons',
+        variant: 'destructive'
+      });
     }
   };
 
   const fetchAffiliates = async () => {
     try {
-      const { data, error } = await supabase
+      const { data: affiliatesData, error } = await supabase
         .from('affiliates')
         .select('*')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setAffiliates(data || []);
+      
+      // Fetch user names for affiliates
+      const affiliatesWithUsers = await Promise.all(
+        (affiliatesData || []).map(async (affiliate) => {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('full_name')
+            .eq('user_id', affiliate.user_id)
+            .single();
+            
+          return {
+            ...affiliate,
+            user_name: profile?.full_name || 'N/A'
+          };
+        })
+      );
+      
+      setAffiliates(affiliatesWithUsers);
+      console.log('Fetched affiliates:', affiliatesWithUsers.length);
     } catch (error) {
       console.error('Error fetching affiliates:', error);
+      toast({
+        title: 'Erro',
+        description: 'Erro ao carregar afiliados',
+        variant: 'destructive'
+      });
     }
   };
 
+  const fetchVideoTasksCount = async () => {
+    try {
+      const { count, error } = await supabase
+        .from('video_tasks')
+        .select('*', { count: 'exact', head: true });
+
+      if (error) throw error;
+      return count || 0;
+    } catch (error) {
+      console.error('Error fetching video tasks count:', error);
+      return 0;
+    }
+  };
+
+  const fetchVipPlansCount = async () => {
+    try {
+      const { count, error } = await supabase
+        .from('vip_plans')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'active');
   const updateStats = () => {
     setStats({
       totalUsers: users.length,

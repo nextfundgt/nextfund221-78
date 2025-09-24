@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Edit, Trash2, Search, Plus } from "lucide-react";
+import { Edit, Trash2, Search, Plus, Activity, RefreshCw } from "lucide-react";
 
 interface Column {
   key: string;
@@ -22,12 +22,14 @@ interface DataTableProps {
   onEdit?: (row: any) => void;
   onDelete?: (row: any) => void;
   onCreate?: () => void;
+  onRefresh?: () => void;
   loading?: boolean;
   searchKey?: string;
   filterConfig?: {
     key: string;
     options: { value: string; label: string }[];
   };
+  showRealtime?: boolean;
 }
 
 export function DataTable({
@@ -37,9 +39,11 @@ export function DataTable({
   onEdit,
   onDelete,
   onCreate,
+  onRefresh,
   loading,
   searchKey = 'name',
-  filterConfig
+  filterConfig,
+  showRealtime = true
 }: DataTableProps) {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
@@ -90,7 +94,15 @@ export function DataTable({
     <Card className="glass-card border-border">
       <CardHeader>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <CardTitle className="text-responsive-lg">{title}</CardTitle>
+          <div className="flex items-center gap-2">
+            <CardTitle className="text-responsive-lg">{title}</CardTitle>
+            {showRealtime && (
+              <Badge variant="outline" className="text-xs">
+                <Activity className="h-3 w-3 mr-1" />
+                Tempo Real
+              </Badge>
+            )}
+          </div>
           
           <div className="flex flex-col sm:flex-row gap-2">
             {/* Search */}
@@ -119,6 +131,13 @@ export function DataTable({
                   ))}
                 </SelectContent>
               </Select>
+            )}
+            
+            {/* Refresh button */}
+            {onRefresh && (
+              <Button variant="outline" size="sm" onClick={onRefresh}>
+                <RefreshCw className="h-4 w-4" />
+              </Button>
             )}
             
             {/* Create button */}
