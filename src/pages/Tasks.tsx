@@ -88,13 +88,13 @@ export default function Tasks() {
     const userVipLevel = getCurrentVipLevel();
     const completedToday = userLevel?.daily_tasks_completed || 0;
     
-    // Sistema Free: 2 vídeos assistidos = R$12 fixos
+    // Sistema Free: 5 vídeos assistidos = R$15 fixos
     if (userVipLevel === 0) {
-      if (completedToday < 2) {
+      if (completedToday < 5) {
         return {
-          amount: 12 / 2, // R$6 por vídeo (2 vídeos = R$12)
+          amount: 3.00, // R$3 por vídeo (5 vídeos = R$15)
           isSpecial: true,
-          description: `Plano Free: R$6 por vídeo (${2 - completedToday} restantes para R$12)`
+          description: `Plano Free: R$3 por vídeo (${5 - completedToday} restantes para R$15)`
         };
       } else {
         return {

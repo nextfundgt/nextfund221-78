@@ -162,8 +162,8 @@ export function VideoPlayer({ taskId, onComplete, isModal = false }: VideoPlayer
           const vipBonus = result.bonus_amount > 0 ? ` (bônus VIP: +R$ ${result.bonus_amount.toFixed(2)})` : '';
           toast.success(`Parabéns! Você ganhou R$ ${result.reward_earned.toFixed(2)}${vipBonus}`);
           
-          // Update user level
-          await incrementTasksCompleted(result.reward_earned);
+          // Free plan: Fixed R$3 per video (5 videos = R$15 total)
+          finalReward = 3.00;
         }
       }
 
