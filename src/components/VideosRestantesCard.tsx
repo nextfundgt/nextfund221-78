@@ -123,7 +123,7 @@ export function VideosRestantesCard() {
                     ? `Ganhe R$ ${progressInfo.nextReward.toFixed(2)} e complete R$ ${progressInfo.totalPossible.toFixed(2)} hoje!`
                     : `Próximo vídeo: R$ ${progressInfo.nextReward.toFixed(2)} • Total possível: R$ ${progressInfo.totalPossible.toFixed(2)}`
                 ) : (
-                  'Complete 8 vídeos hoje e ganhe R$ 15,00 total'
+                  'Complete 5 vídeos hoje e ganhe R$ 15,00 total'
                 )}
               </p>
             </div>
@@ -162,7 +162,7 @@ export function VideosRestantesCard() {
               className={`h-2 rounded-full transition-all duration-300 ${
                 urgente ? 'bg-warning' : 'bg-success'
               }`}
-              style={{ width: `${progressInfo ? progressInfo.progressPercentage : (userLevel.daily_tasks_completed / 8) * 100}%` }}
+              style={{ width: `${progressInfo ? progressInfo.progressPercentage : (userLevel.daily_tasks_completed / 5) * 100}%` }}
             />
           </div>
         </div>

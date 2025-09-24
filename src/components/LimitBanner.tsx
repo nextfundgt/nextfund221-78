@@ -48,7 +48,7 @@ export function LimitBanner() {
           <div className="flex items-center gap-3">
             <Badge variant="destructive">Limite Diário Atingido</Badge>
             <span className="text-destructive font-medium">
-              Você assistiu 8/8 vídeos hoje e ganhou R$ 15,00. Renovação às 00:00h
+              Você assistiu 5/5 vídeos hoje e ganhou R$ 15,00. Renovação às 00:00h
             </span>
           </div>
           <Link to="/level">
@@ -86,7 +86,7 @@ export function LimitBanner() {
           </Badge>
           <span className={`font-medium ${urgente ? 'text-warning' : 'text-success'}`}>
             {urgente ? (
-              <>⏰ <strong>Último vídeo!</strong> Ganhe R$ {progressInfo?.nextReward.toFixed(2) || '1,00'} e complete R$ 15,00</>
+              <>⏰ <strong>Último vídeo!</strong> Ganhe R$ {progressInfo?.nextReward.toFixed(2) || '3,00'} e complete R$ 15,00</>
             ) : (
               <>🎯 Complete {videosRestantes} vídeos e ganhe R$ {progressInfo?.remainingEarnings.toFixed(2) || '15,00'} hoje</>
             )}
@@ -95,11 +95,11 @@ export function LimitBanner() {
         <div className="flex items-center gap-2">
           {/* Progress indicator */}
           <div className="flex items-center gap-1 text-xs text-muted-foreground">
-            <span>{progressInfo ? `R$ ${progressInfo.currentEarnings.toFixed(2)}/${progressInfo.totalPossible.toFixed(2)}` : `${userLevel.daily_tasks_completed}/8`}</span>
+            <span>{progressInfo ? `R$ ${progressInfo.currentEarnings.toFixed(2)}/${progressInfo.totalPossible.toFixed(2)}` : `${userLevel.daily_tasks_completed}/5`}</span>
             <div className="w-8 h-1 bg-muted/30 rounded-full overflow-hidden">
               <div 
                 className={`h-full transition-all duration-300 ${urgente ? 'bg-warning' : 'bg-success'}`}
-                style={{ width: `${progressInfo ? progressInfo.progressPercentage : (userLevel.daily_tasks_completed / 8) * 100}%` }}
+                style={{ width: `${progressInfo ? progressInfo.progressPercentage : (userLevel.daily_tasks_completed / 5) * 100}%` }}
               />
             </div>
           </div>

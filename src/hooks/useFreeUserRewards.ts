@@ -2,22 +2,18 @@ import { useRealtimeUserLevel } from './useRealtimeUserLevel';
 
 /**
  * Hook para gerenciar recompensas progressivas de usuários Free
- * Sistema fixo: R$15,00 total para 8 vídeos
- * - Vídeos 1-7: R$2,00 cada
- * - Vídeo 8: R$1,00
+ * Sistema fixo: R$15,00 total para 5 vídeos
+ * - Vídeos 1-5: R$3,00 cada
  */
 export function useFreeUserRewards() {
   const { userLevel } = useRealtimeUserLevel();
 
   // Calcular recompensa baseada na posição do vídeo
   const calculateRewardForPosition = (videoPosition: number): number => {
-    if (videoPosition < 1 || videoPosition > 8) return 0;
+    if (videoPosition < 1 || videoPosition > 5) return 0;
     
-    // Vídeos 1-7: R$2,00 cada
-    if (videoPosition <= 7) return 2.00;
-    
-    // Vídeo 8: R$1,00 para completar R$15,00
-    if (videoPosition === 8) return 1.00;
+    // Vídeos 1-5: R$3,00 cada
+    if (videoPosition <= 5) return 3.00;
     
     return 0;
   };
@@ -52,7 +48,7 @@ export function useFreeUserRewards() {
     if (!userLevel) return null;
 
     const videosCompleted = userLevel.daily_tasks_completed;
-    const videosRemaining = Math.max(0, 8 - videosCompleted);
+    const videosRemaining = Math.max(0, 5 - videosCompleted);
     const currentEarnings = getCurrentEarnings();
     const nextReward = getNextVideoReward();
     const remainingEarnings = getRemainingEarnings();
@@ -60,14 +56,14 @@ export function useFreeUserRewards() {
     return {
       videosCompleted,
       videosRemaining,
-      totalVideos: 8,
+      totalVideos: 5,
       currentEarnings,
       nextReward,
       remainingEarnings,
       totalPossible: 15.00,
-      progressPercentage: (videosCompleted / 8) * 100,
+      progressPercentage: (videosCompleted / 5) * 100,
       canWatchMore: videosRemaining > 0,
-      isComplete: videosCompleted >= 8
+      isComplete: videosCompleted >= 5
     };
   };
 

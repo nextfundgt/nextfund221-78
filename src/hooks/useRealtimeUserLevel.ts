@@ -17,7 +17,7 @@ interface UserLevel {
 }
 
 const LEVEL_CONFIG = [
-  { level: 0, title: 'Iniciante (Free)', dailyLimit: 8, commissionRate: 5.00, color: 'bg-slate-500' }, // Free: 8 vídeos por dia, R$15 total
+  { level: 0, title: 'Iniciante (Free)', dailyLimit: 5, commissionRate: 5.00, color: 'bg-slate-500' }, // Free: 5 vídeos por dia, R$15 total
   { level: 1, title: 'Bronze', dailyLimit: 15, commissionRate: 6.00, color: 'bg-amber-600' },
   { level: 2, title: 'Prata', dailyLimit: 20, commissionRate: 7.00, color: 'bg-slate-400' },
   { level: 3, title: 'Ouro', dailyLimit: 25, commissionRate: 8.00, color: 'bg-yellow-500' },
@@ -58,7 +58,7 @@ export const useRealtimeUserLevel = () => {
               daily_tasks_completed: 0,
               total_earnings: 0,
               level_progress: 0,
-              daily_limit: 8, // Free users têm limite de 8 vídeos por dia
+              daily_limit: 5, // Free users têm limite de 5 vídeos por dia
               commission_rate: 5.00
             })
             .select()
